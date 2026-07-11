@@ -2,7 +2,6 @@ package connection
 
 import (
 	"chat/globals"
-	"chat/payment"
 	"chat/utils"
 	"crypto/tls"
 	"database/sql"
@@ -91,7 +90,7 @@ func ConnectDatabase() *sql.DB {
 	CreateInvitationTable(db)
 	CreateRedeemTable(db)
 	CreateBroadcastTable(db)
-	payment.CreatePaymentOrderTable(db)
+	CreatePaymentOrderTable(db)
 
 	if err := doMigration(db); err != nil {
 		fmt.Println(fmt.Sprintf("migration error: %s", err))
@@ -312,6 +311,31 @@ func CreateBroadcastTable(db *sql.DB) {
 		  content TEXT,
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  FOREIGN KEY (poster_id) REFERENCES auth(id)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func CreatePaymentOrderTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS payment_order (
+		  id INT PRIMARY KEY AUTO_INCREMENT,
+		  user_id INT,
+		  type VARCHAR(32),
+		  service VARCHAR(32),
+		  amount DECIMAL(16, 4),
+		  quota DECIMAL(16, 4),
+		  order_id VARCHAR(64) UNIQUE,
+		  name VARCHAR(255),
+		  device VARCHAR(32),
+		  state BOOLEAN DEFAULT FALSE,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		  INDEX idx_user_id (user_id),
+		  INDEX idx_order_id (order_id),
+		  FOREIGN KEY (user_id) REFERENCES auth(id)
 		);
 	`)
 	if err != nil {
