@@ -79,7 +79,7 @@ function License() {
   const data = { domain: "", digest: "" };
 
   useEffect(() => {
-    toast.info(t("admin.license.pro-required"));
+    console.log("[coAI] Pro license required for this feature.");
   }, [t]);
 
   return (

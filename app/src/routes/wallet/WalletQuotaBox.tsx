@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
-import { useState } from "react";
+﻿import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { quotaSelector, refreshQuota } from "@/store/quota.ts";
 import { AppDispatch } from "@/store";
@@ -18,11 +18,41 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { useRedeem as redeemCode } from "@/api/redeem.ts";
 import { motion } from "framer-motion";
+import { infoPaymentSelector } from "@/store/info.ts";
+import { createPaymentOrder, usePaymentState } from "@/payment/request.ts";
+import { PaymentButton } from "@/payment/icons.tsx";
+import QuotaWrapper from "@/routes/wallet/AmountItem.tsx";
+
+const BUILTIN_AMOUNTS = [10, 20, 50, 100, 200];
 
 export default function WalletQuotaBox() {
   const { t } = useTranslation();
   const quota = useSelector(quotaSelector);
+  const paymentMethods = useSelector(infoPaymentSelector);
   const [redeemOpen, setRedeemOpen] = useState(false);
+
+  // Online top-up state
+  const [selectedAmountIdx, setSelectedAmountIdx] = useState(0);
+  const [customAmount, setCustomAmount] = useState(BUILTIN_AMOUNTS[0] * 10);
+  const [selectedMethod, setSelectedMethod] = useState("");
+  useEffect(() => {
+    if (!selectedMethod && paymentMethods.length > 0) {
+      setSelectedMethod(paymentMethods[0]);
+    }
+  }, [paymentMethods, selectedMethod]);
+  const [paying, setPaying] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState("");
+
+  // Auto-detect payment state
+  const orderPaid = usePaymentState(currentOrder);
+  const dispatch: AppDispatch = useDispatch();
+
+  useEffect(() => {
+    if (orderPaid) {
+      dispatch(refreshQuota());
+      toast.success(t("buy.payment-success"));
+    }
+  }, [orderPaid, dispatch, t]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -44,6 +74,51 @@ export default function WalletQuotaBox() {
       transition: { duration: 0.5 },
     },
   };
+
+  const handlePay = async () => {
+    if (!selectedMethod || customAmount <= 0) return;
+    const quotaAmount = customAmount;
+    setPaying(true);
+    const res = await createPaymentOrder(selectedMethod, quotaAmount, `TUC${quotaAmount}`);
+    if (res.status && res.data) {
+      setCurrentOrder(res.data.params?.out_trade_no || "");
+
+      if (res.data.params && res.data.url) {
+        // Create a form and POST to the payment URL
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = res.data.url;
+        form.style.display = "none";
+        form.acceptCharset = "utf-8";
+
+        Object.entries(res.data.params).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value as string;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      }
+    } else {
+      toast.error(t("buy.payment-failed"), {
+        description: res.error,
+      });
+    }
+    setPaying(false);
+  };
+
+  const handleAmountChange = (index: number) => {
+    setSelectedAmountIdx(index);
+    if (index < BUILTIN_AMOUNTS.length) {
+      setCustomAmount(BUILTIN_AMOUNTS[index] * 10);
+    }
+  };
+
+  const showOnlineTopup = paymentMethods.length > 0;
 
   return (
     <motion.div
@@ -119,6 +194,61 @@ export default function WalletQuotaBox() {
                 </motion.div>
               </motion.div>
             </motion.div>
+
+            {/* Online Top-up Section */}
+            {showOnlineTopup && (
+              <motion.div
+                className={`w-full h-fit mt-3 border rounded-lg p-4 bg-background`}
+                variants={itemVariants}
+              >
+                <motion.div className="text-sm font-medium mb-3" variants={itemVariants}>
+                  {t("buy.online-topup")}
+                </motion.div>
+
+                <QuotaWrapper
+                  current={selectedAmountIdx}
+                  onCurrentChange={handleAmountChange}
+                  amount={selectedAmountIdx < BUILTIN_AMOUNTS.length ? BUILTIN_AMOUNTS[selectedAmountIdx] : customAmount / 10}
+                  onAmountChange={(amount) => setCustomAmount(amount)}
+                  builtinAmount={BUILTIN_AMOUNTS}
+                />
+
+                {/* Payment method selection */}
+                <div className="mt-3">
+                  <div className="text-xs text-secondary mb-2">{t("buy.payment-method")}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {paymentMethods.map((method) => (
+                      <PaymentButton
+                        key={method}
+                        method={method}
+                        variant={selectedMethod === method ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedMethod(method)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Button
+                    className="w-full"
+                    disabled={paying || !selectedMethod || customAmount <= 0}
+                    loading={paying}
+                    onClick={handlePay}
+                  >
+                    {t("buy.pay", { amount: customAmount })}
+                  </Button>
+                </div>
+
+                {currentOrder && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    {orderPaid
+                      ? t("buy.payment-success")
+                      : t("buy.payment-pending")}
+                  </p>
+                )}
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       </motion.div>
@@ -196,3 +326,4 @@ function RedeemComponent({ open, onOpenChanged }: RedeemComponentProps) {
     </Dialog>
   );
 }
+

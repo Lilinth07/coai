@@ -79,17 +79,26 @@ export function usePaymentState(order: string): boolean {
   const [state, setState] = useState(false);
 
   useEffect(() => {
+    if (!order) {
+      setState(false);
+      return;
+    }
+
+    let active = true;
     const interval = setInterval(async () => {
       const response = await getPaymentOrderStatus(order);
-      withNotify(t, response);
+      if (!active) return;
       if (response.status && response.order_state) {
         setState(true);
         clearInterval(interval);
       }
-    }, 2000);
+    }, 3000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [order, t]);
 
   return state;
 }

@@ -2,6 +2,7 @@ package connection
 
 import (
 	"chat/globals"
+	"chat/payment"
 	"chat/utils"
 	"crypto/tls"
 	"database/sql"
@@ -90,6 +91,7 @@ func ConnectDatabase() *sql.DB {
 	CreateInvitationTable(db)
 	CreateRedeemTable(db)
 	CreateBroadcastTable(db)
+	payment.CreatePaymentOrderTable(db)
 
 	if err := doMigration(db); err != nil {
 		fmt.Println(fmt.Sprintf("migration error: %s", err))

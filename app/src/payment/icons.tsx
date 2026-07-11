@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Button, ButtonProps } from "@/components/ui/button.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { useTranslation } from "react-i18next";
@@ -102,6 +102,7 @@ export const PaymentIcons: Record<string, React.ComponentType<IconProps>> = {
 export const PaymentColorClasses: Record<string, ClassValue> = {
   alipay: "text-alipay-foreground bg-alipay hover:bg-alipay/90",
   wechatpay: "text-wechatpay-foreground bg-wechatpay hover:bg-wechatpay/90",
+  wxpay: "text-wechatpay-foreground bg-wechatpay hover:bg-wechatpay/90",
   qqpay: "text-qqpay-foreground bg-qqpay hover:bg-qqpay/90",
   paypal: "text-paypal-foreground bg-paypal hover:bg-paypal/90",
   stripe: "text-stripe-foreground bg-stripe hover:bg-stripe/90",
@@ -140,3 +141,4 @@ export function PaymentButton({
     </Button>
   );
 }
+

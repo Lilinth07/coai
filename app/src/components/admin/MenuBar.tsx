@@ -95,16 +95,13 @@ function MenuBar() {
         title={t("admin.payment")}
         icon={<CreditCard />}
         path={"/pay"}
-        pro
       />
       <MenuItem
-        pro
         title={t("record.title")}
         icon={<History />}
         path={"/record"}
       />
       <MenuItem
-        // pro
         title={t("admin.settings")}
         icon={<Settings />}
         path={"/system"}
@@ -115,13 +112,11 @@ function MenuBar() {
         path={"/logger"}
       />
       <MenuItem
-        pro
         title={t("admin.cdn.warmup")}
         icon={<ServerCrash />}
         path={"/warmup"}
       />
       <MenuItem
-        pro
         title={t("admin.license.title")}
         icon={<CopyrightIcon />}
         path={"/license"}

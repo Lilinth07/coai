@@ -10,19 +10,21 @@ import (
 )
 
 type ApiInfo struct {
-	Title        string   `json:"title"`
-	Logo         string   `json:"logo"`
-	File         string   `json:"file"`
-	Docs         string   `json:"docs"`
-	Announcement string   `json:"announcement"`
-	BuyLink      string   `json:"buy_link"`
-	Contact      string   `json:"contact"`
-	Footer       string   `json:"footer"`
-	AuthFooter   bool     `json:"auth_footer"`
-	Mail         bool     `json:"mail"`
-	Article      []string `json:"article"`
-	Generation   []string `json:"generation"`
-	RelayPlan    bool     `json:"relay_plan"`
+	Title              string   `json:"title"`
+	Logo               string   `json:"logo"`
+	File               string   `json:"file"`
+	Docs               string   `json:"docs"`
+	Announcement       string   `json:"announcement"`
+	BuyLink            string   `json:"buy_link"`
+	Contact            string   `json:"contact"`
+	Footer             string   `json:"footer"`
+	AuthFooter         bool     `json:"auth_footer"`
+	Mail               bool     `json:"mail"`
+	Article            []string `json:"article"`
+	Generation         []string `json:"generation"`
+	RelayPlan          bool     `json:"relay_plan"`
+	Payment            []string `json:"payment"`
+	PaymentAggregation bool     `json:"payment_aggregation"`
 }
 
 type generalState struct {
@@ -82,12 +84,34 @@ type commonState struct {
 	PromptStore bool     `json:"prompt_store" mapstructure:"promptstore"`
 }
 
+type EpayConfig struct {
+	Domain      string   `json:"domain" mapstructure:"domain"`
+	BusinessId  string   `json:"business_id" mapstructure:"business_id"`
+	BusinessKey string   `json:"business_key" mapstructure:"business_key"`
+	Enabled     bool     `json:"enabled" mapstructure:"enabled"`
+	Methods     []string `json:"methods" mapstructure:"methods"`
+	Aggregation bool     `json:"aggregation" mapstructure:"aggregation"`
+}
+
+type StripePaymentConfig struct {
+	Enabled       bool   `json:"enabled" mapstructure:"enabled"`
+	PublicKey     string `json:"public_key" mapstructure:"public_key"`
+	SecretKey     string `json:"secret_key" mapstructure:"secret_key"`
+	WebhookSecret string `json:"webhook_secret" mapstructure:"webhook_secret"`
+}
+
+type PaymentConfig struct {
+	Epay   EpayConfig           `json:"epay" mapstructure:"epay"`
+	Stripe StripePaymentConfig  `json:"stripe" mapstructure:"stripe"`
+}
+
 type SystemConfig struct {
-	General generalState `json:"general" mapstructure:"general"`
-	Site    siteState    `json:"site" mapstructure:"site"`
-	Mail    mailState    `json:"mail" mapstructure:"mail"`
-	Search  SearchState  `json:"search" mapstructure:"search"`
-	Common  commonState  `json:"common" mapstructure:"common"`
+	General generalState  `json:"general" mapstructure:"general"`
+	Site    siteState     `json:"site" mapstructure:"site"`
+	Mail    mailState     `json:"mail" mapstructure:"mail"`
+	Search  SearchState   `json:"search" mapstructure:"search"`
+	Common  commonState   `json:"common" mapstructure:"common"`
+	Payment PaymentConfig `json:"payment" mapstructure:"payment"`
 }
 
 func NewSystemConfig() *SystemConfig {
@@ -134,6 +158,16 @@ func (c *SystemConfig) SaveConfig() error {
 }
 
 func (c *SystemConfig) AsInfo() ApiInfo {
+	payment := []string{}
+	paymentAggregation := false
+	if c.Payment.Epay.Enabled {
+		payment = c.Payment.Epay.Methods
+		if len(payment) == 0 {
+			payment = []string{"alipay", "wxpay"}
+		}
+		paymentAggregation = c.Payment.Epay.Aggregation
+	}
+
 	return ApiInfo{
 		Title:        c.General.Title,
 		Logo:         c.General.Logo,
@@ -148,6 +182,8 @@ func (c *SystemConfig) AsInfo() ApiInfo {
 		Article:      c.Common.Article,
 		Generation:   c.Common.Generation,
 		RelayPlan:    c.Site.RelayPlan,
+		Payment:      payment,
+		PaymentAggregation: paymentAggregation,
 	}
 }
 
@@ -157,6 +193,7 @@ func (c *SystemConfig) UpdateConfig(data *SystemConfig) error {
 	c.Mail = data.Mail
 	c.Search = data.Search
 	c.Common = data.Common
+	c.Payment = data.Payment
 
 	utils.ApplySeo(c.General.Title, c.General.Logo)
 	utils.ApplyPWAManifest(c.General.PWAManifest)

@@ -38,6 +38,8 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+const AdminPayment = lazyFactor(() => import("@/routes/admin/Payment.tsx"));
+const AdminRecord = lazyFactor(() => import("@/routes/admin/Record.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -181,7 +183,7 @@ const router = createBrowserRouter([
             path: "warmup",
             element: (
               <Suspense>
-                <License />
+                <AdminLicense />
               </Suspense>
             ),
           },
@@ -226,7 +228,7 @@ const router = createBrowserRouter([
             path: "record",
             element: (
               <Suspense>
-                <License />
+                <AdminRecord />
               </Suspense>
             ),
           },
@@ -235,7 +237,7 @@ const router = createBrowserRouter([
             path: "pay",
             element: (
               <Suspense>
-                <License />
+                <AdminPayment />
               </Suspense>
             ),
           },

@@ -213,7 +213,13 @@
     "plan-info": "Subscriptions allow use of in-subscription models at a fixed price per cycle, suitable for fixed long-term use options.",
     "buy-description": "Please select the credits you want to buy",
     "redeem-title": "Redeem Code",
-    "redeem-description": "Please enter your redemption code to claim your credits"
+    "redeem-description": "Please enter your redemption code to claim your credits",
+    "online-topup": "Online Top-up",
+    "payment-method": "Payment Method",
+    "pay": "Pay {{amount}} credits",
+    "payment-failed": "Failed to start payment",
+    "payment-success": "Payment successful, quota credited",
+    "payment-pending": "Payment processing, please wait…"
   },
   "pkg": {
     "title": "Packages",
@@ -1046,7 +1052,32 @@
     "created-at": "Creation Time",
     "used-at": "Collection time",
     "used-username": "Claim User",
-    "payment": "Orders",
+    "payment": {
+      "orders": "Top-up Orders",
+      "search-placeholder": "Search order id or username",
+      "search": "Search",
+      "order-id": "Order ID",
+      "user": "User",
+      "type": "Method",
+      "amount": "Amount",
+      "quota": "Quota",
+      "state": "State",
+      "time": "Time",
+      "actions": "Actions",
+      "paid": "Paid",
+      "pending": "Pending",
+      "no-orders": "No orders",
+      "total": "{{count}} total",
+      "recheck": "Recheck",
+      "epay-config": "EPay Settings",
+      "enabled": "Enabled",
+      "domain": "Gateway URL",
+      "business-id": "Partner ID",
+      "business-key": "Partner Key",
+      "methods": "Methods",
+      "aggregation": "Aggregation",
+      "save": "Save"
+    },
     "pay": {
       "epay": "Easy to pay",
       "afdian": "Love Power Generation",
@@ -1132,7 +1163,8 @@
     "custom-group-action-desc": "Please enter a custom group name",
     "group-setting": "Group settings",
     "notifications": "Push to site",
-    "notify-all": "Notify all users"
+    "notify-all": "Notify all users",
+    "payment_menu": "Orders"
   },
   "mask": {
     "title": "Preset",
