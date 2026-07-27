@@ -1,8 +1,7 @@
 import { Button } from "./ui/button.tsx";
 import { useConversationActions, useMessages } from "@/store/chat.ts";
 import { MessageSquarePlus } from "lucide-react";
-import Github from "@/components/ui/icons/Github.tsx";
-import { openWindow } from "@/utils/device.ts";
+import CustomerServiceLink from "@/components/CustomerServiceLink.tsx";
 
 function ProjectLink() {
   const messages = useMessages();
@@ -18,14 +17,7 @@ function ProjectLink() {
       <MessageSquarePlus className={`h-4 w-4`} />
     </Button>
   ) : (
-    <Button
-      variant="outline"
-      size="icon-md"
-      className="rounded-full overflow-hidden"
-      onClick={() => openWindow("https://github.com/coaidev/coai")}
-    >
-      <Github className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100" />
-    </Button>
+    <CustomerServiceLink />
   );
 }
 

@@ -16,7 +16,7 @@ func validSqlError(err error) bool {
 	// Error 1060: Duplicate column name
 	// Error 1050: Table already exists
 
-	return !(strings.Contains(content, "Error 1060") || strings.Contains(content, "Error 1050"))
+	return !(strings.Contains(content, "Error 1060") || strings.Contains(content, "Error 1050") || strings.Contains(content, "Error 1061") || strings.Contains(content, "Error 1091"))
 }
 
 func checkSqlError(_ sql.Result, err error) error {
@@ -65,6 +65,48 @@ func doMigration(db *sql.DB) error {
 		return err
 	}
 
+	// API access center: migrate the legacy one-key-per-user table to multi-key.
+	if err := execSql(db, `CREATE INDEX idx_apikey_user ON apikey (user_id);`); err != nil {
+		return err
+	}
+	if err := execSql(db, `ALTER TABLE apikey DROP INDEX user_id;`); err != nil {
+		return err
+	}
+	apiKeyColumns := []string{
+		"ADD COLUMN key_hash CHAR(64) DEFAULT ''",
+		"ADD COLUMN key_prefix VARCHAR(24) DEFAULT ''",
+		"ADD COLUMN key_last4 VARCHAR(4) DEFAULT ''",
+		"ADD COLUMN name VARCHAR(100) DEFAULT 'Default Key'",
+		"ADD COLUMN disabled BOOLEAN DEFAULT FALSE",
+		"ADD COLUMN expired_at DATETIME NULL",
+		"ADD COLUMN quota DECIMAL(24, 6) DEFAULT 0",
+		"ADD COLUMN used_quota DECIMAL(24, 6) DEFAULT 0",
+		"ADD COLUMN infinite_quota BOOLEAN DEFAULT TRUE",
+		"ADD COLUMN ip_whitelist TEXT",
+		"ADD COLUMN model_whitelist TEXT",
+		"ADD COLUMN token_group VARCHAR(64) DEFAULT 'default'",
+		"ADD COLUMN last_used_at DATETIME NULL",
+		"ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+	}
+	for _, column := range apiKeyColumns {
+		if err := execSql(db, "ALTER TABLE apikey "+column+";"); err != nil {
+			return err
+		}
+	}
+	if err := execSql(db, `
+		UPDATE apikey SET
+		  key_hash = SHA2(api_key, 256),
+		  key_prefix = LEFT(api_key, 12),
+		  key_last4 = RIGHT(api_key, 4),
+		  name = CASE WHEN name IS NULL OR name = '' THEN 'Default Key' ELSE name END
+		WHERE (key_hash IS NULL OR key_hash = '') AND api_key IS NOT NULL AND api_key <> '';
+	`); err != nil {
+		return err
+	}
+	if err := execSql(db, `CREATE UNIQUE INDEX idx_apikey_hash ON apikey (key_hash);`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -78,6 +120,26 @@ func doSqliteMigration(db *sql.DB) error {
 		ADD COLUMN task_id VARCHAR(255) NULL;
 	`); err != nil {
 		return err
+	}
+
+	apiKeyColumns := []string{
+		"ADD COLUMN key_hash TEXT DEFAULT ''",
+		"ADD COLUMN key_prefix TEXT DEFAULT ''",
+		"ADD COLUMN key_last4 TEXT DEFAULT ''",
+		"ADD COLUMN name TEXT DEFAULT 'Default Key'",
+		"ADD COLUMN disabled BOOLEAN DEFAULT FALSE",
+		"ADD COLUMN expired_at DATETIME NULL",
+		"ADD COLUMN quota DECIMAL(24, 6) DEFAULT 0",
+		"ADD COLUMN used_quota DECIMAL(24, 6) DEFAULT 0",
+		"ADD COLUMN infinite_quota BOOLEAN DEFAULT TRUE",
+		"ADD COLUMN ip_whitelist TEXT",
+		"ADD COLUMN model_whitelist TEXT",
+		"ADD COLUMN token_group TEXT DEFAULT 'default'",
+		"ADD COLUMN last_used_at DATETIME NULL",
+		"ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+	}
+	for _, column := range apiKeyColumns {
+		_ = execSql(db, "ALTER TABLE apikey "+column+";")
 	}
 
 	return nil

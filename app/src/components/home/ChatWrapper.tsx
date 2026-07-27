@@ -36,16 +36,6 @@ import { toast } from "sonner";
 import { VoiceAction } from "@/components/VoiceProvider.tsx";
 import { AnimatePresence, motion } from "framer-motion";
 
-type InterfaceProps = {
-  scrollable: boolean;
-  setTarget: (instance: HTMLElement | null) => void;
-};
-
-function Interface(props: InterfaceProps) {
-  const messages = useMessages();
-  return messages.length > 0 ? <ChatInterface {...props} /> : <ChatSpace />;
-}
-
 function fileReducer(state: FileArray, action: Record<string, any>): FileArray {
   switch (action.type) {
     case "add":
@@ -61,6 +51,7 @@ function fileReducer(state: FileArray, action: Record<string, any>): FileArray {
 
 function ChatWrapper() {
   const { t } = useTranslation();
+  const messages = useMessages();
   const { send: sendAction } = useMessageActions();
   const process = listenMessageEvent();
   const [files, fileDispatch] = useReducer(fileReducer, []);
@@ -70,7 +61,7 @@ function ChatWrapper() {
   const current = useSelector(selectCurrent);
   const auth = useSelector(selectAuthenticated);
   const model = useSelector(selectModel);
-  const target = useRef(null);
+  const target = useRef<HTMLTextAreaElement>(null);
   const align = useSelector(alignSelector);
 
   const working = useWorking();
@@ -159,8 +150,20 @@ function ChatWrapper() {
   return (
     <div className={`chat-container bg-muted/25 dark:bg-muted/10`}>
       <div className={`chat-wrapper`}>
-        <Interface setTarget={setInstance} scrollable={!visible} />
-        <div className={`chat-input border-t bg-muted/25`}>
+        {messages.length > 0 ? (
+          <ChatInterface setTarget={setInstance} scrollable={!visible} />
+        ) : (
+          <ChatSpace
+            files={files}
+            fileDispatch={fileDispatch}
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            target={target}
+          />
+        )}
+        {messages.length > 0 && (
+          <div className={`chat-input border-t bg-muted/25`}>
           <motion.div
             className={`flex flex-row items-center p-1.5 pb-0.5`}
             initial={{ opacity: 0, y: 20 }}
@@ -251,7 +254,8 @@ function ChatWrapper() {
               />
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

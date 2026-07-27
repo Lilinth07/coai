@@ -1,4 +1,4 @@
-import { CommonResponse, withNotify } from "@/api/common.ts";
+import { CommonResponse } from "@/api/common.ts";
 import axios from "axios";
 import { getErrorMessage } from "@/utils/base.ts";
 import { getDeviceType, getDomain } from "@/payment/utils.ts";
@@ -23,6 +23,7 @@ export type PaymentOrder = {
   type: string;
   service: string;
   amount: number;
+  quota: number;
   order_id: string;
   name: string;
   device: string;

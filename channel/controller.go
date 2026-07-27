@@ -140,6 +140,54 @@ func DeleteCharge(c *gin.Context) {
 	})
 }
 
+func SetApiCharge(c *gin.Context) {
+	var charge Charge
+	if err := c.ShouldBindJSON(&charge); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": false, "error": err.Error()})
+		return
+	}
+	state := ApiChargeInstance.SetRule(charge)
+	c.JSON(http.StatusOK, gin.H{"status": state == nil, "error": utils.GetError(state)})
+}
+
+func GetApiChargeList(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": true, "data": ApiChargeInstance.ListRules()})
+}
+
+func DeleteApiCharge(c *gin.Context) {
+	state := ApiChargeInstance.DeleteRule(utils.ParseInt(c.Param("id")))
+	c.JSON(http.StatusOK, gin.H{"status": state == nil, "error": utils.GetError(state)})
+}
+
+func SyncApiCharge(c *gin.Context) {
+	var form SyncChargeForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": false, "error": err.Error()})
+		return
+	}
+	state := ApiChargeInstance.SyncRules(form.Data, form.Overwrite)
+	c.JSON(http.StatusOK, gin.H{"status": state == nil, "error": utils.GetError(state)})
+}
+
+func GetApiGroups(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": true, "data": ApiGroupInstance.List()})
+}
+
+func SetApiGroup(c *gin.Context) {
+	var group ApiGroup
+	if err := c.ShouldBindJSON(&group); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": false, "error": err.Error()})
+		return
+	}
+	state := ApiGroupInstance.Set(group)
+	c.JSON(http.StatusOK, gin.H{"status": state == nil, "error": utils.GetError(state)})
+}
+
+func DeleteApiGroup(c *gin.Context) {
+	state := ApiGroupInstance.Delete(c.Param("id"))
+	c.JSON(http.StatusOK, gin.H{"status": state == nil, "error": utils.GetError(state)})
+}
+
 func SyncCharge(c *gin.Context) {
 	var form SyncChargeForm
 	if err := c.ShouldBindJSON(&form); err != nil {

@@ -20,6 +20,8 @@ func NewChatRequest(group string, props *adaptercommon.ChatProps, hook globals.H
 	var err error
 	for !ticker.IsDone() {
 		if channel := ticker.Next(); channel != nil {
+			props.ChannelId = channel.GetId()
+			props.ChannelName = channel.GetName()
 			props.MaxRetries = utils.ToPtr(channel.GetRetry())
 			if err = adapter.NewChatRequest(channel, props, hook); adapter.IsSkipError(err) {
 				return err
@@ -116,6 +118,8 @@ func NewVideoRequestWithCache(_ *redis.Client, buffer *utils.Buffer, group strin
 	var times int = 0
 	for !ticker.IsDone() {
 		if channel := ticker.Next(); channel != nil {
+			props.ChannelId = channel.GetId()
+			props.ChannelName = channel.GetName()
 			times++
 			props.MaxRetries = utils.ToPtr(channel.GetRetry())
 			if err = adapter.NewVideoRequest(channel, props, hook); adapter.IsSkipError(err) {

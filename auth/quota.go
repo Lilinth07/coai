@@ -68,10 +68,15 @@ func (u *User) UseQuota(db *sql.DB, quota float32) bool {
 	if quota == 0 {
 		return true
 	}
-	if !u.DecreaseQuota(db, quota) {
+	result, err := globals.ExecDb(db, `
+		UPDATE quota SET quota = quota - ?, used = used + ?
+		WHERE user_id = ? AND quota >= ?
+	`, quota, quota, u.GetID(db), quota)
+	if err != nil {
 		return false
 	}
-	return u.IncreaseUsedQuota(db, quota)
+	affected, _ := result.RowsAffected()
+	return affected > 0
 }
 
 func (u *User) PayedQuota(db *sql.DB, quota float32) bool {

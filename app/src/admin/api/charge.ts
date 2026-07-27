@@ -21,27 +21,33 @@ export type ChargeFetchResponse = CommonResponse & {
   data: ChargeProps[];
 };
 
-export async function listCharge(): Promise<ChargeListResponse> {
+export type ChargeScope = "web" | "api";
+
+function chargeBase(scope: ChargeScope) {
+  return scope === "api" ? "/admin/api/charge" : "/admin/charge";
+}
+
+export async function listCharge(scope: ChargeScope = "web"): Promise<ChargeListResponse> {
   try {
-    const response = await axios.get("/admin/charge/list");
+    const response = await axios.get(`${chargeBase(scope)}/list`);
     return response.data as ChargeListResponse;
   } catch (e) {
     return { status: false, error: getErrorMessage(e), data: [] };
   }
 }
 
-export async function setCharge(charge: ChargeProps): Promise<CommonResponse> {
+export async function setCharge(charge: ChargeProps, scope: ChargeScope = "web"): Promise<CommonResponse> {
   try {
-    const response = await axios.post(`/admin/charge/set`, charge);
+    const response = await axios.post(`${chargeBase(scope)}/set`, charge);
     return response.data as CommonResponse;
   } catch (e) {
     return { status: false, error: getErrorMessage(e) };
   }
 }
 
-export async function deleteCharge(id: number): Promise<CommonResponse> {
+export async function deleteCharge(id: number, scope: ChargeScope = "web"): Promise<CommonResponse> {
   try {
-    const response = await axios.get(`/admin/charge/delete/${id}`);
+    const response = await axios.get(`${chargeBase(scope)}/delete/${id}`);
     return response.data as CommonResponse;
   } catch (e) {
     return { status: false, error: getErrorMessage(e) };
@@ -50,9 +56,10 @@ export async function deleteCharge(id: number): Promise<CommonResponse> {
 
 export async function syncCharge(
   data: ChargeSyncRequest,
+  scope: ChargeScope = "web",
 ): Promise<CommonResponse> {
   try {
-    const response = await axios.post(`/admin/charge/sync`, data);
+    const response = await axios.post(`${chargeBase(scope)}/sync`, data);
     return response.data as CommonResponse;
   } catch (e) {
     return { status: false, error: getErrorMessage(e) };

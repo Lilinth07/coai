@@ -602,6 +602,8 @@ function MarketItem({
               className={`model-combobox`}
               list={channelModels}
               placeholder={t("admin.market.model-id-placeholder")}
+              allowCustomValue
+              customValueLabel={(id) => `${t("add")}: ${id}`}
             />
           </div>
           <div className={`market-row col-span-2`}>
@@ -1053,9 +1055,13 @@ function Market() {
   };
 
   const submit = async (): Promise<void> => {
-    const preflight = form.filter(
-      (model) => model.id.trim().length > 0 && model.name.trim().length > 0,
-    );
+    const preflight = form
+      .map((model) => ({
+        ...model,
+        id: model.id.trim(),
+        name: model.name.trim(),
+      }))
+      .filter((model) => model.id.length > 0 && model.name.length > 0);
     const resp = await updateMarket(preflight);
 
     if (!resp.status) {

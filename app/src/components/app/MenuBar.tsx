@@ -23,6 +23,8 @@ import {
   Shield,
   User,
   Wallet,
+  KeyRound,
+  Paintbrush,
 } from "lucide-react";
 import Icon from "@/components/utils/Icon.tsx";
 
@@ -70,6 +72,8 @@ function MenuBar({ children, className }: MenuBarProps) {
             <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
             {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
             <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
+            <BarItem icon={<KeyRound />} path={`/api-console`} name={"api"} />
+            <BarItem icon={<Paintbrush />} path={`/image-studio`} name={"image"} />
             {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}

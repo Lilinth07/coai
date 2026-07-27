@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,6 +55,11 @@ func VideosRelayAPI(c *gin.Context) {
 
 	db := utils.GetDBFromContext(c)
 	cache := utils.GetCacheFromContext(c)
+	apiKey := auth.GetApiKeyFromContext(c)
+	if apiKey == nil {
+		sendErrorResponse(c, fmt.Errorf("access denied for invalid api key"), "authentication_error")
+		return
+	}
 	user := &auth.User{
 		Username: username,
 	}
@@ -67,13 +73,14 @@ func VideosRelayAPI(c *gin.Context) {
 	messages := []globals.Message{
 		{Role: globals.User, Content: prompt},
 	}
-	check, plan := checkEnableState(db, cache, user, form.Model, messages)
+	charge := channel.ApiChargeInstance.GetCharge(form.Model).WithRatio(apiKey.GroupRatio)
+	check := auth.CanEnableApiModel(db, user, apiKey, form.Model, messages, charge)
 	if check != nil {
 		sendErrorResponse(c, check, "quota_exceeded_error")
 		return
 	}
 
-	buffer := utils.NewBuffer(form.Model, messages, channel.ChargeInstance.GetCharge(form.Model))
+	buffer := utils.NewBuffer(form.Model, messages, charge)
 	buffer.SetTokenName(globals.ApiTokenType)
 
 	props := adaptercommon.CreateVideoProps(&adaptercommon.VideoProps{
@@ -85,7 +92,8 @@ func VideosRelayAPI(c *gin.Context) {
 	})
 	props.User = auth.GetUsernameString(db, user)
 
-	group := auth.GetGroup(db, user)
+	group := apiKey.ChannelGroup
+	requestId := utils.Md5Encrypt(user.Username + form.Model + fmt.Sprint(time.Now().UnixNano()))
 
 	var jobJson string
 	hit, err := channel.NewVideoRequestWithCache(cache, buffer, group, props, func(data *globals.Chunk) error {
@@ -97,14 +105,30 @@ func VideosRelayAPI(c *gin.Context) {
 
 	analysis.AnalyseRequest(form.Model, props.User, buffer, err)
 	if err != nil {
-		auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 		globals.Warn(fmt.Sprintf("error from video request api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
+		_ = auth.SettleApiRequest(db, user, apiKey, &auth.ApiRecord{
+			RequestId: requestId, UserId: user.GetID(db), KeyId: apiKey.Id, KeyName: apiKey.Name,
+			Username: user.Username, Model: form.Model, ActualModel: props.Model, TokenGroup: apiKey.TokenGroup,
+			ChannelId: props.ChannelId, ChannelName: props.ChannelName, Duration: buffer.GetDuration(),
+			Status: "error", Error: err.Error(), ClientIP: c.ClientIP(),
+		})
 		sendErrorResponse(c, err)
 		return
 	}
 
+	record := &auth.ApiRecord{
+		RequestId: requestId, UserId: user.GetID(db), KeyId: apiKey.Id, KeyName: apiKey.Name,
+		Username: user.Username, Model: form.Model, ActualModel: props.Model, TokenGroup: apiKey.TokenGroup,
+		ChannelId: props.ChannelId, ChannelName: props.ChannelName, InputTokens: buffer.CountInputToken(),
+		OutputTokens: buffer.CountOutputToken(false), Duration: buffer.GetDuration(), Status: "success",
+		ClientIP: c.ClientIP(),
+	}
 	if !hit {
-		CollectQuota(c, user, buffer, plan, err)
+		record.Quota = buffer.GetRecordQuota()
+	}
+	if settleErr := auth.SettleApiRequest(db, user, apiKey, record); settleErr != nil {
+		sendErrorResponse(c, settleErr, "quota_exceeded_error")
+		return
 	}
 
 	job, jerr := utils.UnmarshalString[RelayVideoJob](jobJson)
@@ -210,6 +234,9 @@ func VideosContentRelayAPI(c *gin.Context) {
 		return
 	}
 	group := auth.GetGroup(db, user)
+	if apiKey := auth.GetApiKeyFromContext(c); apiKey != nil {
+		group = apiKey.ChannelGroup
+	}
 	ticker := channel.ConduitInstance.GetTicker(model, group)
 	if ticker == nil || ticker.IsEmpty() {
 		abortWithErrorResponse(c, fmt.Errorf("cannot find channel for model %s", model), "invalid_request_error")

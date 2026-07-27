@@ -61,7 +61,7 @@ export default function AdminPayment() {
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <div className={`flex flex-col gap-4 p-4`}>
+    <div className="w-full min-w-0 flex flex-col gap-4 p-4 md:p-6">
       <EpayConfigCard />
       <Card>
         <CardHeader>
@@ -133,7 +133,7 @@ export default function AdminPayment() {
                     <TableCell>
                       <Badge variant="outline">{order.type}</Badge>
                     </TableCell>
-                    <TableCell>楼{order.amount?.toFixed(2)}</TableCell>
+                    <TableCell>¥{order.amount?.toFixed(2)}</TableCell>
                     <TableCell>{order.quota}</TableCell>
                     <TableCell>
                       <Badge variant={order.state ? "default" : "secondary"}>
@@ -310,5 +310,4 @@ function EpayConfigCard() {
     </Card>
   );
 }
-
 

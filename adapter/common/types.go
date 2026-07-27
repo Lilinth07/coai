@@ -10,6 +10,8 @@ type RequestProps struct {
 	Current    int                 `json:"-"`
 	Group      string              `json:"-"`
 	Proxy      globals.ProxyConfig `json:"-"`
+	ChannelId  int                 `json:"-"`
+	ChannelName string             `json:"-"`
 }
 
 type VideoProps struct {

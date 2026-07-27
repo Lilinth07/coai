@@ -87,6 +87,7 @@ func ConnectDatabase() *sql.DB {
 	CreateQuotaTable(db)
 	CreateSubscriptionTable(db)
 	CreateApiKeyTable(db)
+	CreateApiRecordTable(db)
 	CreateInvitationTable(db)
 	CreateRedeemTable(db)
 	CreateBroadcastTable(db)
@@ -256,10 +257,60 @@ func CreateApiKeyTable(db *sql.DB) {
 	_, err := globals.ExecDb(db, `
 		CREATE TABLE IF NOT EXISTS apikey (
 		  id INT PRIMARY KEY AUTO_INCREMENT,
-		  user_id INT UNIQUE,
-		  api_key VARCHAR(255) UNIQUE,
+		  user_id INT NOT NULL,
+		  api_key VARCHAR(255) NULL,
+		  key_hash CHAR(64) DEFAULT '',
+		  key_prefix VARCHAR(24) DEFAULT '',
+		  key_last4 VARCHAR(4) DEFAULT '',
+		  name VARCHAR(100) DEFAULT 'Default Key',
+		  disabled BOOLEAN DEFAULT FALSE,
+		  expired_at DATETIME NULL,
+		  quota DECIMAL(24, 6) DEFAULT 0,
+		  used_quota DECIMAL(24, 6) DEFAULT 0,
+		  infinite_quota BOOLEAN DEFAULT TRUE,
+		  ip_whitelist TEXT,
+		  model_whitelist TEXT,
+		  token_group VARCHAR(64) DEFAULT 'default',
+		  last_used_at DATETIME NULL,
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  UNIQUE KEY idx_apikey_hash (key_hash),
+		  KEY idx_apikey_user (user_id),
 		  FOREIGN KEY (user_id) REFERENCES auth(id)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func CreateApiRecordTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS api_record (
+		  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		  request_id VARCHAR(64) NOT NULL,
+		  user_id INT NOT NULL,
+		  key_id INT NOT NULL,
+		  key_name VARCHAR(100) DEFAULT '',
+		  username VARCHAR(255) DEFAULT '',
+		  model VARCHAR(255) DEFAULT '',
+		  actual_model VARCHAR(255) DEFAULT '',
+		  token_group VARCHAR(64) DEFAULT 'default',
+		  channel_id INT DEFAULT 0,
+		  channel_name VARCHAR(255) DEFAULT '',
+		  input_tokens INT DEFAULT 0,
+		  output_tokens INT DEFAULT 0,
+		  quota DECIMAL(24, 6) DEFAULT 0,
+		  duration DECIMAL(12, 3) DEFAULT 0,
+		  is_stream BOOLEAN DEFAULT FALSE,
+		  status VARCHAR(32) DEFAULT 'success',
+		  error TEXT,
+		  client_ip VARCHAR(64) DEFAULT '',
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  UNIQUE KEY idx_api_record_request (request_id),
+		  KEY idx_api_record_user_time (user_id, created_at),
+		  KEY idx_api_record_key_time (key_id, created_at),
+		  KEY idx_api_record_model_time (model, created_at)
 		);
 	`)
 	if err != nil {

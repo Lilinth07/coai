@@ -44,6 +44,11 @@ func ImagesRelayAPI(c *gin.Context) {
 	}
 
 	db := utils.GetDBFromContext(c)
+	apiKey := auth.GetApiKeyFromContext(c)
+	if apiKey == nil {
+		sendErrorResponse(c, fmt.Errorf("access denied for invalid api key"), "authentication_error")
+		return
+	}
 	user := &auth.User{
 		Username: username,
 	}
@@ -54,13 +59,14 @@ func ImagesRelayAPI(c *gin.Context) {
 		form.Model = strings.TrimSuffix(form.Model, "-official")
 	}
 
-	check := auth.CanEnableModel(db, user, form.Model, []globals.Message{})
+	charge := channel.ApiChargeInstance.GetCharge(form.Model).WithRatio(apiKey.GroupRatio)
+	check := auth.CanEnableApiModel(db, user, apiKey, form.Model, []globals.Message{}, charge)
 	if check != nil {
 		sendErrorResponse(c, check, "quota_exceeded_error")
 		return
 	}
 
-	createRelayImageObject(c, form, prompt, created, user, supportRelayPlan())
+	createRelayImageObject(c, form, prompt, created, user, apiKey, charge)
 }
 
 func getImageProps(form RelayImageForm, messages []globals.Message, buffer *utils.Buffer) *adaptercommon.ChatProps {
@@ -87,7 +93,7 @@ func getImageDataFromBuffer(buffer *utils.Buffer) (string, string) {
 	return "", ""
 }
 
-func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, created int64, user *auth.User, plan bool) {
+func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, created int64, user *auth.User, apiKey *auth.ApiKey, charge *channel.Charge) {
 	db := utils.GetDBFromContext(c)
 	cache := utils.GetCacheFromContext(c)
 
@@ -98,23 +104,25 @@ func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, 
 		},
 	}
 
-	buffer := utils.NewBuffer(form.Model, messages, channel.ChargeInstance.GetCharge(form.Model))
-	hit, err := channel.NewChatRequestWithCache(cache, buffer, auth.GetGroup(db, user), getImageProps(form, messages, buffer), func(data *globals.Chunk) error {
+	requestId := utils.Md5Encrypt(user.Username + form.Model + time.Now().String())
+	buffer := utils.NewBuffer(form.Model, messages, charge)
+	props := getImageProps(form, messages, buffer)
+	hit, err := channel.NewChatRequestWithCache(cache, buffer, apiKey.ChannelGroup, props, func(data *globals.Chunk) error {
 		buffer.WriteChunk(data)
 		return nil
 	})
 
 	admin.AnalyseRequest(form.Model, buffer, err)
 	if err != nil {
-		auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 		globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
-
+		_ = auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, requestId, form.Model, false, "error", err, false))
 		sendErrorResponse(c, err)
 		return
 	}
 
-	if !hit {
-		CollectQuota(c, user, buffer, plan, err)
+	if settleErr := auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, requestId, form.Model, false, "success", nil, !hit)); settleErr != nil {
+		sendErrorResponse(c, settleErr, "quota_exceeded_error")
+		return
 	}
 
 	url, b64Json := getImageDataFromBuffer(buffer)

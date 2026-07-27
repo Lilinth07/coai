@@ -11,12 +11,16 @@ import (
 
 var ConduitInstance *Manager
 var ChargeInstance *ChargeManager
+var ApiChargeInstance *ChargeManager
+var ApiGroupInstance *ApiGroupManager
 var SystemInstance *SystemConfig
 var PlanInstance *PlanManager
 
 func InitManager() {
 	ConduitInstance = NewChannelManager()
 	ChargeInstance = NewChargeManager()
+	ApiChargeInstance = NewApiChargeManager(ChargeInstance)
+	ApiGroupInstance = NewApiGroupManager()
 	SystemInstance = NewSystemConfig()
 	PlanInstance = NewPlanManager()
 }

@@ -89,6 +89,7 @@ const (
 	GPT4O                        = "gpt-4o"
 	GPT4O20240513                = "gpt-4o-2024-05-13"
 	GPTImage1                    = "gpt-image-1"
+	GPTImage2                    = "gpt-image-2"
 	Sora2                        = "sora-2"
 	Dalle                        = "dalle"
 	Dalle2                       = "dall-e-2"
@@ -149,7 +150,7 @@ const (
 )
 
 var OpenAIDalleModels = []string{
-	Dalle, Dalle2, Dalle3, GPTImage1,
+	Dalle, Dalle2, Dalle3, GPTImage1, GPTImage2,
 }
 
 var GoogleImagenModels = []string{

@@ -27,7 +27,7 @@ func (c *ChatInstance) CreateImageRequest(props ImageProps) (string, string, err
 			Model:  props.Model,
 			Prompt: props.Prompt,
 			Size: utils.Multi[ImageSize](
-				props.Model == globals.Dalle3 || props.Model == globals.GPTImage1,
+				props.Model == globals.Dalle3 || props.Model == globals.GPTImage1 || props.Model == globals.GPTImage2,
 				ImageSize1024,
 				ImageSize512,
 			),
@@ -45,7 +45,7 @@ func (c *ChatInstance) CreateImageRequest(props ImageProps) (string, string, err
 	}
 
 	// for gpt-image-1, return base64 data if available
-	if props.Model == globals.GPTImage1 && data.Data[0].B64Json != "" {
+	if data.Data[0].B64Json != "" {
 		return "", data.Data[0].B64Json, nil
 	}
 

@@ -40,7 +40,6 @@ import { getSharedLink, shareConversation } from "@/api/sharing.ts";
 import { Input } from "@/components/ui/input.tsx";
 import { goAuth } from "@/utils/app.ts";
 import { cn } from "@/components/ui/lib/utils.ts";
-import { getNumberMemory } from "@/utils/memory.ts";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -397,8 +396,7 @@ function SidebarConversationList({
 
 function SideBar() {
   const { t } = useTranslation();
-  const { refresh, toggle } = useConversationActions();
-  const current = useSelector(selectCurrent);
+  const { refresh } = useConversationActions();
   const open = useSelector(selectMenu);
   const auth = useSelector(selectAuthenticated);
   const [search, setSearch] = useState<string>("");
@@ -407,13 +405,7 @@ function SideBar() {
     type: "",
   });
   useEffectAsync(async () => {
-    const resp = await refresh();
-
-    const store = getNumberMemory("history_conversation", -1);
-    if (current === store) return; // no need to dispatch current
-    if (store === -1) return; // -1 is default, no need to dispatch
-    if (!resp.map((item) => item.id).includes(store)) return; // not in the list, no need to dispatch
-    await toggle(store);
+    await refresh();
   }, []);
 
   return (

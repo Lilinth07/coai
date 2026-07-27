@@ -1,17 +1,16 @@
 import "@/assets/pages/package.less";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
-import React, { useState } from "react";
+import React from "react";
 import { cn } from "@/components/ui/lib/utils.ts";
 import Avatar from "@/components/Avatar.tsx";
 import { useDispatch, useSelector } from "react-redux";
 import {
   logout,
   selectAuthenticated,
-  selectInit,
   selectUsername,
 } from "@/store/auth.ts";
 import { Badge } from "@/components/ui/badge.tsx";
-import { copyClipboard, useClipboard } from "@/utils/dom.ts";
+import { useClipboard } from "@/utils/dom.ts";
 import { useGroup } from "@/utils/groups.ts";
 import { useTranslation } from "react-i18next";
 import Icon from "@/components/utils/Icon.tsx";
@@ -20,13 +19,9 @@ import {
   Clock,
   Cloud,
   CloudRain,
-  Copy,
   ExternalLink,
   HandIcon,
   HelpCircle,
-  Plug,
-  Power,
-  RotateCw,
   Share2,
   Trash2,
   Undo2,
@@ -40,7 +35,7 @@ import {
   initialUserInfo,
   UserInfo,
 } from "@/api/auth.ts";
-import { CommonResponse, withNotify } from "@/api/common.ts";
+import { withNotify } from "@/api/common.ts";
 import { goAuth } from "@/utils/app.ts";
 import { quotaSelector } from "@/store/quota.ts";
 import Tips from "@/components/Tips.tsx";
@@ -48,9 +43,7 @@ import { getSharedLink, SharingPreviewForm } from "@/api/sharing.ts";
 import { openWindow } from "@/utils/device.ts";
 import { dataSelector, deleteData, syncData } from "@/store/sharing.ts";
 import { DeeptrainOnly } from "@/conf/deeptrain.tsx";
-import { deeptrainEndpoint, docsEndpoint } from "@/conf/env.ts";
-import { getApiKey, keySelector, regenerateApiKey } from "@/store/api.ts";
-import { Input } from "@/components/ui/input.tsx";
+import { deeptrainEndpoint } from "@/conf/env.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,42 +186,11 @@ function ShareContent({ data }: ShareContentProps) {
 function Account() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const init = useSelector(selectInit);
   const username = useSelector(selectUsername);
   const auth = useSelector(selectAuthenticated);
   const quota = useSelector(quotaSelector);
   const copy = useClipboard();
   const group = useGroup(true);
-
-  const apiKey = useSelector(keySelector);
-  const [loadingApiKey, setLoadingApiKey] = useState(false);
-  const [openResetApiKey, setOpenResetApiKey] = useState(false);
-
-  const getSystemKey = async () => {
-    if (!init) return;
-
-    setLoadingApiKey(true);
-    await getApiKey(dispatch);
-    setLoadingApiKey(false);
-  };
-
-  useEffectAsync(getSystemKey, [init]);
-
-  async function copySystemKey() {
-    await copyClipboard(apiKey);
-    toast.success(t("api.copied"), {
-      description: t("api.copied-description"),
-    });
-  }
-
-  async function resetSystemKey() {
-    const resp = await regenerateApiKey(dispatch);
-    withNotify(t, resp as CommonResponse, true);
-
-    if (resp.status) {
-      setOpenResetApiKey(false);
-    }
-  }
 
   const [info, setInfo] = React.useState<UserInfo>({
     ...initialUserInfo,
@@ -404,89 +366,6 @@ function Account() {
             </div>
           </AccountCard>
         </DeeptrainOnly>
-        <AccountCard
-          title={"api.title"}
-          description={t("account.api-description")}
-          icon={<Plug />}
-        >
-          <div className={`api-dialog`}>
-            <div className={`api-wrapper flex flex-row space-x-1`}>
-              <Button
-                variant={`outline`}
-                size={`icon-sm`}
-                className={`shrink-0`}
-                onClick={getSystemKey}
-              >
-                <RotateCw
-                  className={cn("h-3.5 w-3.5", loadingApiKey && "animate-spin")}
-                />
-              </Button>
-              <Input
-                type={`password`}
-                value={apiKey}
-                readOnly={true}
-                classNameWrapper={`grow`}
-                className={`text-xs h-8`}
-              />
-              <Button
-                variant={`default`}
-                className={`shrink-0`}
-                size={`icon-sm`}
-                onClick={copySystemKey}
-              >
-                <Copy className={`h-3.5 w-3.5`} />
-              </Button>
-            </div>
-            <div className={`flex flex-row mt-2 items-center justify-center`}>
-              <AlertDialog
-                open={openResetApiKey}
-                onOpenChange={setOpenResetApiKey}
-              >
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant={`destructive`}
-                    size={`default-sm`}
-                    className={`text-xs mr-2`}
-                  >
-                    <Power className={`h-3.5 w-3.5 mr-2`} />
-                    {t("api.reset")}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("api.reset")}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("api.reset-description")}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <Button
-                      variant={`destructive`}
-                      loading={true}
-                      onClick={resetSystemKey}
-                      unClickable
-                    >
-                      {t("confirm")}
-                    </Button>
-                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              <Button
-                variant={`outline`}
-                size={`default-sm`}
-                className={`text-xs`}
-                asChild
-              >
-                <a href={docsEndpoint} target={`_blank`}>
-                  <ExternalLink className={`h-3.5 w-3.5 mr-2`} />
-                  {t("api.learn-more")}
-                </a>
-              </Button>
-            </div>
-          </div>
-        </AccountCard>
         <AccountCard
           icon={<Share2 />}
           title={"share.manage"}

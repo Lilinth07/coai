@@ -10,7 +10,7 @@ import {
 } from "@/admin/charge.ts";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input.tsx";
-import { useMemo, useReducer, useState } from "react";
+import { createContext, useContext, useMemo, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Activity,
@@ -61,6 +61,7 @@ import {
   setCharge,
   syncCharge,
   fetchUpstreamCharge,
+  ChargeScope,
 } from "@/admin/api/charge.ts";
 import { useEffectAsync } from "@/utils/hook.ts";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -92,6 +93,8 @@ const initialState: ChargeProps = {
   input: 0,
   output: 0,
 };
+
+const ChargeScopeContext = createContext<ChargeScope>("web");
 
 function reducer(state: ChargeProps, action: any): ChargeProps {
   switch (action.type) {
@@ -175,6 +178,7 @@ function SyncDialog({
   system,
 }: SyncDialogProps) {
   const { t } = useTranslation();
+  const scope = useContext(ChargeScopeContext);
 
   const [siteCharge, setSiteCharge] = useState<ChargeProps[]>([]);
   const [siteOpen, setSiteOpen] = useState(false);
@@ -273,10 +277,10 @@ function SyncDialog({
               loading={true}
               variant={overwrite ? `destructive` : `default`}
               onClick={async () => {
-                const resp = await syncCharge({
-                  data: siteCharge,
-                  overwrite,
-                });
+                const resp = await syncCharge(
+                  { data: siteCharge, overwrite },
+                  scope,
+                );
                 withNotify(t, resp, true);
 
                 if (resp.status) {
@@ -416,6 +420,7 @@ function ChargeEditor({
   allModels,
 }: ChargeEditorProps) {
   const { t } = useTranslation();
+  const scope = useContext(ChargeScopeContext);
 
   const [model, setModel] = useState("");
 
@@ -448,7 +453,7 @@ function ChargeEditor({
       setModel("");
     }
 
-    const resp = await setCharge(data);
+    const resp = await setCharge(data, scope);
     withNotify(t, resp, true);
 
     if (resp.status) clear();
@@ -676,6 +681,7 @@ type ChargeTableProps = {
 
 function ChargeTable({ data, dispatch, onRefresh }: ChargeTableProps) {
   const { t } = useTranslation();
+  const scope = useContext(ChargeScopeContext);
   const copy = useClipboard();
 
   return (
@@ -742,7 +748,7 @@ function ChargeTable({ data, dispatch, onRefresh }: ChargeTableProps) {
                     tooltip={t("admin.channels.delete")}
                     variant={`destructive`}
                     onClick={async () => {
-                      const resp = await deleteCharge(charge.id);
+                      const resp = await deleteCharge(charge.id, scope);
                       withNotify(t, resp, true);
                       onRefresh();
                     }}
@@ -759,7 +765,7 @@ function ChargeTable({ data, dispatch, onRefresh }: ChargeTableProps) {
   );
 }
 
-function ChargeWidget() {
+function ChargeWidget({ scope = "web" }: { scope?: ChargeScope }) {
   const { t } = useTranslation();
   const [data, setData] = useState<ChargeProps[]>([]);
   const [form, dispatch] = useReducer(reducer, initialState);
@@ -784,7 +790,7 @@ function ChargeWidget() {
 
   async function refresh(ignoreUpdate?: boolean) {
     setLoading(true);
-    const resp = await listCharge();
+    const resp = await listCharge(scope);
     if (!ignoreUpdate) await update();
 
     setLoading(false);
@@ -795,6 +801,7 @@ function ChargeWidget() {
   useEffectAsync(async () => await refresh(true), []);
 
   return (
+    <ChargeScopeContext.Provider value={scope}>
     <div className={`charge-widget`}>
       <ChargeAction
         loading={loading}
@@ -814,6 +821,7 @@ function ChargeWidget() {
       />
       <ChargeTable data={data} dispatch={dispatch} onRefresh={refresh} />
     </div>
+    </ChargeScopeContext.Provider>
   );
 }
 

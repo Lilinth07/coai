@@ -53,4 +53,21 @@ type ChargeManager struct {
 	Sequence         ChargeSequence     `json:"sequence"`
 	Models           map[string]*Charge `json:"models"`
 	NonBillingModels []string           `json:"non_billing_models"`
+	ConfigKey        string             `json:"-"`
+}
+
+type ApiGroup struct {
+	Id           string  `json:"id" mapstructure:"id"`
+	Name         string  `json:"name" mapstructure:"name"`
+	ChannelGroup string  `json:"channel_group" mapstructure:"channelgroup"`
+	Ratio        float32 `json:"ratio" mapstructure:"ratio"`
+	Enabled      bool    `json:"enabled" mapstructure:"enabled"`
+	MinLevel     int     `json:"min_level" mapstructure:"minlevel"`
+	Description  string  `json:"description" mapstructure:"description"`
+}
+
+type ApiGroupSequence []*ApiGroup
+
+type ApiGroupManager struct {
+	Sequence ApiGroupSequence `json:"sequence"`
 }

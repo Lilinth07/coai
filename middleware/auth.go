@@ -10,6 +10,7 @@ import (
 )
 
 func ProcessToken(c *gin.Context, token string) *auth.User {
+	c.Set("api_key", (*auth.ApiKey)(nil))
 	if user := auth.ParseToken(c, token); user != nil {
 		c.Set("auth", true)
 		c.Set("user", user.Username)
@@ -35,10 +36,11 @@ func ProcessKey(c *gin.Context, key string) *auth.User {
 		return nil
 	}
 
-	if user := auth.ParseApiKey(c, key); user != nil {
+	if user, apiKey := auth.ParseApiKeyInfo(c, key); user != nil && apiKey != nil {
 		c.Set("auth", true)
 		c.Set("user", user.Username)
 		c.Set("agent", "api")
+		c.Set("api_key", apiKey)
 		return user
 	}
 
@@ -69,6 +71,7 @@ func ProcessAuthorization(c *gin.Context) *auth.User {
 	c.Set("auth", false)
 	c.Set("user", "")
 	c.Set("agent", "")
+	c.Set("api_key", (*auth.ApiKey)(nil))
 	return nil
 }
 

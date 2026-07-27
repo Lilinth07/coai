@@ -131,6 +131,7 @@ export const isPaymentAggregationSelector = (state: RootState): boolean =>
   state.info.payment_aggregation;
 export const infoCurrencySelector = (state: RootState): string =>
   state.info.currency;
+export const infoTitleSelector = (state: RootState): string => state.info.title;
 export const infoAnnouncementSelector = (state: RootState): string =>
   state.info.announcement;
 export const infoHideKeyDocsSelector = (state: RootState): boolean =>

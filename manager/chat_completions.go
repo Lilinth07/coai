@@ -36,6 +36,27 @@ func checkEnableState(db *sql.DB, cache *redis.Client, user *auth.User, model st
 	return auth.CanEnableModel(db, user, model, messages), false
 }
 
+func buildApiRecord(c *gin.Context, user *auth.User, key *auth.ApiKey, buffer *utils.Buffer, props *adaptercommon.ChatProps, requestId, model string, stream bool, status string, requestErr error, charged bool) *auth.ApiRecord {
+	record := &auth.ApiRecord{
+		RequestId: requestId, UserId: user.GetID(utils.GetDBFromContext(c)), KeyId: key.Id,
+		KeyName: key.Name, Username: user.Username, Model: model, TokenGroup: key.TokenGroup,
+		InputTokens: buffer.CountInputToken(), OutputTokens: buffer.CountOutputToken(false),
+		Duration: buffer.GetDuration(), IsStream: stream, Status: status, ClientIP: c.ClientIP(),
+	}
+	if charged {
+		record.Quota = buffer.GetRecordQuota()
+	}
+	if requestErr != nil {
+		record.Error = requestErr.Error()
+	}
+	if props != nil {
+		record.ActualModel = props.Model
+		record.ChannelId = props.ChannelId
+		record.ChannelName = props.ChannelName
+	}
+	return record
+}
+
 func ChatRelayAPI(c *gin.Context) {
 	if globals.CloseRelay {
 		abortWithErrorResponse(c, fmt.Errorf("relay api is denied of access"), "access_denied_error")
@@ -60,7 +81,11 @@ func ChatRelayAPI(c *gin.Context) {
 	}
 
 	db := utils.GetDBFromContext(c)
-	cache := utils.GetCacheFromContext(c)
+	apiKey := auth.GetApiKeyFromContext(c)
+	if apiKey == nil {
+		abortWithErrorResponse(c, fmt.Errorf("access denied for invalid api key"), "authentication_error")
+		return
+	}
 	user := &auth.User{
 		Username: username,
 	}
@@ -80,16 +105,17 @@ func ChatRelayAPI(c *gin.Context) {
 		form.Official = true
 	}
 
-	check, plan := checkEnableState(db, cache, user, form.Model, messages)
+	charge := channel.ApiChargeInstance.GetCharge(form.Model).WithRatio(apiKey.GroupRatio)
+	check := auth.CanEnableApiModel(db, user, apiKey, form.Model, messages, charge)
 	if check != nil {
 		sendErrorResponse(c, check, "quota_exceeded_error")
 		return
 	}
 
 	if form.Stream {
-		sendStreamTranshipmentResponse(c, form, messages, id, created, user, plan)
+		sendStreamTranshipmentResponse(c, form, messages, id, created, user, apiKey, charge)
 	} else {
-		sendTranshipmentResponse(c, form, messages, id, created, user, plan)
+		sendTranshipmentResponse(c, form, messages, id, created, user, apiKey, charge)
 	}
 }
 
@@ -109,27 +135,28 @@ func getChatProps(form RelayForm, messages []globals.Message, buffer *utils.Buff
 	}, buffer)
 }
 
-func sendTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals.Message, id string, created int64, user *auth.User, plan bool) {
+func sendTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals.Message, id string, created int64, user *auth.User, apiKey *auth.ApiKey, charge *channel.Charge) {
 	db := utils.GetDBFromContext(c)
 	cache := utils.GetCacheFromContext(c)
 
-	buffer := utils.NewBuffer(form.Model, messages, channel.ChargeInstance.GetCharge(form.Model))
-	hit, err := channel.NewChatRequestWithCache(cache, buffer, auth.GetGroup(db, user), getChatProps(form, messages, buffer), func(data *globals.Chunk) error {
+	buffer := utils.NewBuffer(form.Model, messages, charge)
+	props := getChatProps(form, messages, buffer)
+	hit, err := channel.NewChatRequestWithCache(cache, buffer, apiKey.ChannelGroup, props, func(data *globals.Chunk) error {
 		buffer.WriteChunk(data)
 		return nil
 	})
 
 	admin.AnalyseRequest(form.Model, buffer, err)
 	if err != nil {
-		auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 		globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
-
+		_ = auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, id, form.Model, false, "error", err, false))
 		sendErrorResponse(c, err)
 		return
 	}
 
-	if !hit {
-		CollectQuota(c, user, buffer, plan, err)
+	if settleErr := auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, id, form.Model, false, "success", nil, !hit)); settleErr != nil {
+		sendErrorResponse(c, settleErr, "quota_exceeded_error")
+		return
 	}
 
 	tools := buffer.GetToolCalls()
@@ -212,18 +239,16 @@ func getStreamTranshipmentForm(id string, created int64, form RelayForm, data *g
 	}
 }
 
-func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals.Message, id string, created int64, user *auth.User, plan bool) {
+func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals.Message, id string, created int64, user *auth.User, apiKey *auth.ApiKey, charge *channel.Charge) {
 	partial := make(chan RelayStreamResponse)
 	db := utils.GetDBFromContext(c)
 	cache := utils.GetCacheFromContext(c)
 
-	group := auth.GetGroup(db, user)
-	charge := channel.ChargeInstance.GetCharge(form.Model)
-
 	go func() {
 		buffer := utils.NewBuffer(form.Model, messages, charge)
+		props := getChatProps(form, messages, buffer)
 		hit, err := channel.NewChatRequestWithCache(
-			cache, buffer, group, getChatProps(form, messages, buffer),
+			cache, buffer, apiKey.ChannelGroup, props,
 			func(data *globals.Chunk) error {
 				buffer.WriteChunk(data)
 
@@ -236,18 +261,20 @@ func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []g
 
 		admin.AnalyseRequest(form.Model, buffer, err)
 		if err != nil {
-			auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 			globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err.Error(), form.Model, c.ClientIP()))
+			_ = auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, id, form.Model, true, "error", err, false))
 			partial <- getStreamTranshipmentForm(id, created, form, &globals.Chunk{Content: err.Error()}, buffer, true, err)
 			close(partial)
 			return
 		}
 
-		partial <- getStreamTranshipmentForm(id, created, form, &globals.Chunk{Content: ""}, buffer, true, nil)
-
-		if !hit {
-			CollectQuota(c, user, buffer, plan, err)
+		if settleErr := auth.SettleApiRequest(db, user, apiKey, buildApiRecord(c, user, apiKey, buffer, props, id, form.Model, true, "success", nil, !hit)); settleErr != nil {
+			partial <- getStreamTranshipmentForm(id, created, form, &globals.Chunk{Content: settleErr.Error()}, buffer, true, settleErr)
+			close(partial)
+			return
 		}
+
+		partial <- getStreamTranshipmentForm(id, created, form, &globals.Chunk{Content: ""}, buffer, true, nil)
 
 		close(partial)
 		return

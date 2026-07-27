@@ -396,7 +396,8 @@
   },
   "contact": {
     "title": "お問い合わせ",
-    "community": "コミュニティに参加する"
+    "community": "コミュニティに参加する",
+    "service": "カスタマーサービス"
   },
   "settings": {
     "title": "設定",

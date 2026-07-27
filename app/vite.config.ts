@@ -1,11 +1,12 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import path from "path"
-import { createHtmlPlugin } from 'vite-plugin-html' //@ts-ignore
-import { createTranslationPlugin } from "./src/translator"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { createHtmlPlugin } from "vite-plugin-html"; //@ts-ignore
+import { createTranslationPlugin } from "./src/translator";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  assetsInclude: ["**/*.glb"],
   plugins: [
     react(),
     createHtmlPlugin({
@@ -22,8 +23,8 @@ export default defineConfig({
     preprocessorOptions: {
       less: {
         javascriptEnabled: true,
-      }
-    }
+      },
+    },
   },
   build: {
     manifest: true,
@@ -46,7 +47,7 @@ export default defineConfig({
       "/v1": {
         target: "http://localhost:8094",
         changeOrigin: true,
-      }
-    }
-  }
+      },
+    },
+  },
 });

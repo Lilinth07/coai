@@ -15,13 +15,13 @@ import { lazyFactor } from "@/utils/loader.tsx";
 import { useSelector } from "react-redux";
 import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
-import License from "@/routes/admin/License.tsx";
-
 const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
+const ApiConsole = lazyFactor(() => import("@/routes/ApiConsole.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
+const ImageStudio = lazyFactor(() => import("@/routes/ImageStudio.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
 const Article = lazyFactor(() => import("@/routes/Article.tsx"));
 
@@ -40,6 +40,7 @@ const AdminSubscription = lazyFactor(
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
 const AdminPayment = lazyFactor(() => import("@/routes/admin/Payment.tsx"));
 const AdminRecord = lazyFactor(() => import("@/routes/admin/Record.tsx"));
+const AdminApiAccess = lazyFactor(() => import("@/routes/admin/ApiAccess.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -110,6 +111,17 @@ const router = createBrowserRouter([
           <Suspense>
             <Account />
           </Suspense>
+        ),
+      },
+      {
+        id: "api-console",
+        path: "api-console",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <ApiConsole />
+            </Suspense>
+          </AuthRequired>
         ),
       },
       {
@@ -242,6 +254,15 @@ const router = createBrowserRouter([
             ),
           },
           {
+            id: "admin-api-access",
+            path: "api-access",
+            element: (
+              <Suspense>
+                <AdminApiAccess />
+              </Suspense>
+            ),
+          },
+          {
             id: "admin-logger",
             path: "logger",
             element: (
@@ -260,6 +281,18 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <Generation />
+            </Suspense>
+          </AuthRequired>
+        ),
+        ErrorBoundary: NotFound,
+      },
+      {
+        id: "image-studio",
+        path: "/image-studio",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <ImageStudio />
             </Suspense>
           </AuthRequired>
         ),

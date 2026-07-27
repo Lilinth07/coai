@@ -12,6 +12,7 @@ func Register(app *gin.RouterGroup) {
 		app.POST("/card", card.HandlerAPI)
 
 		app.GET("/generation/create", generation.GenerateAPI)
+		app.POST("/generation/image", generation.ImageAPI)
 		app.GET("/generation/download/tar", generation.ProjectTarDownloadAPI)
 		app.GET("/generation/download/zip", generation.ProjectZipDownloadAPI)
 

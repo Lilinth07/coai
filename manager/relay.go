@@ -2,6 +2,7 @@ package manager
 
 import (
 	"chat/admin"
+	"chat/auth"
 	"chat/channel"
 	"chat/globals"
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,16 @@ import (
 )
 
 func ModelAPI(c *gin.Context) {
+	if key := auth.GetApiKeyFromContext(c); key != nil {
+		data := make([]globals.ListModelsItem, 0)
+		for _, item := range globals.V1ListModels.Data {
+			if key.AllowsModel(item.Id) && channel.ApiChargeInstance.Contains(item.Id) {
+				data = append(data, item)
+			}
+		}
+		c.JSON(http.StatusOK, globals.ListModels{Object: "list", Data: data})
+		return
+	}
 	c.JSON(http.StatusOK, globals.V1ListModels)
 }
 

@@ -40,25 +40,6 @@ func ParseToken(c *gin.Context, token string) *User {
 	return nil
 }
 
-func ParseApiKey(c *gin.Context, key string) *User {
-	db := utils.GetDBFromContext(c)
-
-	if len(key) == 0 {
-		return nil
-	}
-
-	var user User
-	if err := globals.QueryRowDb(db, `
-			SELECT auth.id, auth.username, auth.password FROM auth 
-			INNER JOIN apikey ON auth.id = apikey.user_id 
-			WHERE apikey.api_key = ?
-			`, key).Scan(&user.ID, &user.Username, &user.Password); err != nil {
-		return nil
-	}
-
-	return &user
-}
-
 func getCode(c *gin.Context, cache *redis.Client, email string) string {
 	code, err := cache.Get(c, fmt.Sprintf("nio:otp:%s", email)).Result()
 	if err != nil {

@@ -39,6 +39,67 @@
   }
 }
 
+.customer-service-button {
+  position: relative;
+  z-index: 60;
+  gap: 0.45rem;
+  min-width: 104px;
+  padding-inline: 0.8rem;
+
+  &[aria-expanded="true"] {
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.45);
+    background: hsl(var(--primary) / 0.08);
+  }
+
+  .customer-service-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
+
+  &.is-loading .customer-service-icon::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border: 2px solid hsl(var(--primary) / 0.18);
+    border-top-color: hsl(var(--primary));
+    border-radius: 50%;
+    animation: customer-service-spin 0.75s linear infinite;
+  }
+}
+
+.customer-lanyard-popover {
+  position: fixed;
+  z-index: 50;
+  inset: var(--navbar-height) 0 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform-origin: top right;
+}
+
+@keyframes customer-service-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-service-button.is-loading .customer-service-icon::after {
+    animation-duration: 1.5s;
+  }
+}
+
 div[data-radix-popper-content-wrapper=""] {
   user-select: none;
 

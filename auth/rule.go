@@ -55,6 +55,31 @@ func CanEnableModel(db *sql.DB, user *User, model string, messages []globals.Mes
 	return nil
 }
 
+func CanEnableApiModel(db *sql.DB, user *User, key *ApiKey, model string, messages []globals.Message, charge *channel.Charge) error {
+	if user == nil || key == nil {
+		return fmt.Errorf(ErrNotAuthenticated, model)
+	}
+	if !key.AllowsModel(model) {
+		return fmt.Errorf("model is not allowed by api key (model: %s)", model)
+	}
+	if charge.IsUnsetType() && !user.IsAdmin(db) {
+		return fmt.Errorf(ErrNotSetPrice, model)
+	}
+	if !charge.IsBilling() {
+		return nil
+	}
+	inputTokens := utils.NumTokensFromMessages(messages, model, false)
+	estimatedInputCost := float32(inputTokens) / 1000 * charge.GetInput()
+	quota := user.GetQuota(db)
+	if quota < estimatedInputCost {
+		return fmt.Errorf(ErrEstimatedCost, model, estimatedInputCost, quota)
+	}
+	if !key.HasQuota(estimatedInputCost) {
+		return fmt.Errorf("api key quota is not enough (model: %s, estimated cost: %0.2f)", model, estimatedInputCost)
+	}
+	return nil
+}
+
 func CanEnableModelWithSubscription(db *sql.DB, cache *redis.Client, user *User, model string, messages []globals.Message) (canEnable error, usePlan bool) {
 	// use subscription quota first
 	if user != nil && HandleSubscriptionUsage(db, cache, user, model) {

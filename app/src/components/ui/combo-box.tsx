@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type ComboBoxProps = {
@@ -30,6 +30,8 @@ type ComboBoxProps = {
   align?: "start" | "end" | "center" | undefined;
   hideSearchBar?: boolean;
   icon?: React.ReactNode;
+  allowCustomValue?: boolean;
+  customValueLabel?: (value: string) => React.ReactNode;
 };
 
 export function Combobox({
@@ -45,15 +47,18 @@ export function Combobox({
   align,
   hideSearchBar,
   icon,
+  allowCustomValue,
+  customValueLabel,
 }: ComboBoxProps) {
   const { t } = useTranslation();
   const [open, setOpen] = React.useState(defaultOpen ?? false);
+  const [searchValue, setSearchValue] = React.useState("");
   const valueList = React.useMemo((): string[] => {
     // list set (if some element in current value is not in list, it will be added)
     const seq = [...list, value ?? ""].filter((v) => v);
     const set = new Set(seq);
     return [...set];
-  }, [list]);
+  }, [list, value]);
 
   const formatter = React.useMemo(() => {
     if (listFormatter) {
@@ -64,8 +69,26 @@ export function Combobox({
       listTranslated ? t(`${listTranslated}.${value}`) : value;
   }, [listFormatter, listTranslated]);
 
+  const customValue = searchValue.trim();
+  const showCustomValue =
+    allowCustomValue &&
+    customValue.length > 0 &&
+    !valueList.includes(customValue);
+
+  const selectValue = (nextValue: string) => {
+    onChange(nextValue);
+    setSearchValue("");
+    setOpen(false);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(state) => {
+        setOpen(state);
+        if (!state) setSearchValue("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -84,18 +107,32 @@ export function Combobox({
         align={align}
       >
         <Command>
-          {!hideSearchBar && <CommandInput placeholder={placeholder} />}
+          {!hideSearchBar && (
+            <CommandInput
+              value={searchValue}
+              onValueChange={setSearchValue}
+              placeholder={placeholder}
+            />
+          )}
           <CommandEmpty>{t("admin.empty")}</CommandEmpty>
           <CommandList>
+            {showCustomValue && (
+              <CommandItem
+                key={`custom-${customValue}`}
+                value={`custom-${customValue}`}
+                onSelect={() => selectValue(customValue)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {customValueLabel?.(customValue) ?? customValue}
+              </CommandItem>
+            )}
             {valueList.map((key) => (
               <CommandItem
                 key={key}
                 value={key}
                 onSelect={() => {
                   if (key === value) return setOpen(false);
-
-                  onChange(key);
-                  setOpen(false);
+                  selectValue(key);
                 }}
               >
                 <Check

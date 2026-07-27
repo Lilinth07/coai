@@ -8,8 +8,12 @@ import (
 )
 
 func NewChargeManager() *ChargeManager {
+	return NewChargeManagerWithKey("charge")
+}
+
+func NewChargeManagerWithKey(key string) *ChargeManager {
 	var seq ChargeSequence
-	if err := viper.UnmarshalKey("charge", &seq); err != nil {
+	if err := viper.UnmarshalKey(key, &seq); err != nil {
 		panic(err)
 	}
 
@@ -17,9 +21,27 @@ func NewChargeManager() *ChargeManager {
 		Sequence:         seq,
 		Models:           map[string]*Charge{},
 		NonBillingModels: []string{},
+		ConfigKey:        key,
 	}
 	m.Load()
 
+	return m
+}
+
+func NewApiChargeManager(base *ChargeManager) *ChargeManager {
+	m := NewChargeManagerWithKey("api_charge")
+	if len(m.Sequence) > 0 || base == nil {
+		return m
+	}
+	for _, charge := range base.Sequence {
+		if charge == nil {
+			continue
+		}
+		copy := charge.WithRatio(1.2)
+		m.Sequence = append(m.Sequence, copy)
+	}
+	m.Load()
+	_ = m.SaveConfig()
 	return m
 }
 
@@ -80,7 +102,22 @@ func (m *ChargeManager) GetCharge(model string) *Charge {
 }
 
 func (m *ChargeManager) SaveConfig() error {
-	return utils.SaveConfig("charge", m.Sequence)
+	return utils.SaveConfig(m.ConfigKey, m.Sequence)
+}
+
+func (c *Charge) WithRatio(ratio float32) *Charge {
+	if ratio <= 0 {
+		ratio = 1
+	}
+	return &Charge{
+		Id:        c.Id,
+		Type:      c.Type,
+		Models:    append([]string{}, c.Models...),
+		Input:     c.Input * ratio,
+		Output:    c.Output * ratio,
+		Anonymous: c.Anonymous,
+		Unset:     c.Unset,
+	}
 }
 
 func (m *ChargeManager) GetMaxId() int {
@@ -100,6 +137,7 @@ func (m *ChargeManager) AddRawRule(charge *Charge) {
 
 func (m *ChargeManager) AddRule(charge Charge) error {
 	m.AddRawRule(&charge)
+	m.Load()
 	return m.SaveConfig()
 }
 
@@ -114,6 +152,7 @@ func (m *ChargeManager) UpdateRawRule(charge *Charge) {
 
 func (m *ChargeManager) UpdateRule(charge Charge) error {
 	m.UpdateRawRule(&charge)
+	m.Load()
 	return m.SaveConfig()
 }
 
@@ -127,6 +166,7 @@ func (m *ChargeManager) SetRawRule(charge *Charge) {
 
 func (m *ChargeManager) SetRule(charge Charge) error {
 	m.SetRawRule(&charge)
+	m.Load()
 	return m.SaveConfig()
 }
 
@@ -141,6 +181,7 @@ func (m *ChargeManager) DeleteRawRule(id int) {
 
 func (m *ChargeManager) DeleteRule(id int) error {
 	m.DeleteRawRule(id)
+	m.Load()
 	return m.SaveConfig()
 }
 
@@ -149,6 +190,7 @@ func (m *ChargeManager) SyncRules(charge ChargeSequence, overwrite bool) error {
 		m.SyncRule(item, overwrite)
 	}
 
+	m.Load()
 	return m.SaveConfig()
 }
 

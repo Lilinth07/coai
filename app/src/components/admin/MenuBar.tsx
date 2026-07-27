@@ -15,6 +15,7 @@ import {
   ServerCrash,
   Settings,
   Users,
+  Braces,
 } from "lucide-react";
 import router from "@/router.tsx";
 import { useLocation } from "react-router-dom";
@@ -87,12 +88,17 @@ function MenuBar() {
       />
       <MenuItem title={t("admin.prize")} icon={<CloudCog />} path={"/charge"} />
       <MenuItem
+        title={t("apiAdmin.menu")}
+        icon={<Braces />}
+        path={"/api-access"}
+      />
+      <MenuItem
         title={t("admin.subscription")}
         icon={<CalendarRange />}
         path={"/subscription"}
       />
       <MenuItem
-        title={t("admin.payment")}
+        title={t("admin.payment_menu")}
         icon={<CreditCard />}
         path={"/pay"}
       />
